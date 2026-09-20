@@ -59,6 +59,9 @@ fun getClientEmailOrThrow(client: Client): String {
     return client.email ?: throw IllegalArgumentException("Клієнт з ID ${client.id} не має електронної пошти!")
 }
 
+// Пояснення до Завдання 5:
+// Оператор !! допустимий лише тоді, коли ми на 100% впевнені, що значення не null, але компілятор не може це визначити сам.
+// Застосовується в тестах або після попередньої перевірки на null.
 fun forceGetPostalCode(client: Client): String {
     return client.address!!.postalCode!!
 }
