@@ -22,9 +22,9 @@ class DiceViewModel : ViewModel() {
     fun rollDice() {
         if (_isRolling.value == true) return
         _isRolling.value = true
-
         threads.clear()
-        var finishedCount = 0
+        
+        val finishedCount = AtomicInteger(0)
 
         // Кількість кроків по 100 мс для кожної з 5 кісток: 15=1.5с, 20=2.0с, 25=2.5с, 30=3.0с, 35=3.5с
         val stepsPerDie = listOf(15, 20, 25, 30, 35)
@@ -34,13 +34,16 @@ class DiceViewModel : ViewModel() {
                     val steps = stepsPerDie[i]
                     for (step in 1..steps) {
                         Thread.sleep(100)
-                        currentDice[i] = Random.nextInt(1, 7)
-                        _diceValues.postValue(currentDice.toList())
+                        // Захист зміни та створення копії currentDice спільним блокуванням
+                        val updatedList = synchronized(currentDice) {
+                            currentDice[i] = Random.nextInt(1, 7)
+                            currentDice.toList()
+                        }
+                        _diceValues.postValue(updatedList)
                     }
                 } catch (e: InterruptedException) {
                 } finally {
-                    finishedCount++
-                    if (finishedCount == 5) {
+                    if (finishedCount.incrementAndGet() == 5) {
                         _isRolling.postValue(false)
                     }
                 }
