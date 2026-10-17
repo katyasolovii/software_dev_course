@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">flowcomparison</string>
+    <string name="cancel">Cancel subsription</string>
+    <string name="calculate">Subscribe</string>
+</resources>
