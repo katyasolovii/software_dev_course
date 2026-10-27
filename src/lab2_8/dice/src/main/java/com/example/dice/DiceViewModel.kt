@@ -35,34 +35,17 @@ class DiceViewModel : ViewModel() {
         startRolling()
     }
 
-    // Запуск корутини, міняє стан кнопки на "RESTART", одночасно крутить 5 кісток у паралельних корутинах (кожна зі своїм часом), чекає зупинки останньої і повертає стан кнопки на "ROLL"
     private fun startRolling() {
-        // Запуск корутини у viewModelScope
         rollJob = viewModelScope.launch {
             _isRolling.value = true
             _buttonText.value = "RESTART"
-
-            val stepsPerDie = listOf(15, 20, 25, 30, 35)
-            val deferredList = mutableListOf<Deferred<Unit>>()
-
-            coroutineScope {
-                // Цикл для створення 5 паралельних корутин
-                for (index in 0..4) {
-                    val task = async {
-                        val steps = stepsPerDie[index]
-
-                        for (step in 1..steps) {
-                            // Отримання нового випадкового значення
-                            val newValue = diceModel.rollOnce()
-                            currentDice[index] = newValue
-                            _diceValues.value = currentDice.toList()
-                        }
-                    }
-                    deferredList.add(task)
+            // Виклик з DiceModel
+            diceModel.rollAllDiceAnimated { index, newValue ->
+                synchronized(currentDice) {
+                    currentDice[index] = newValue
+                    _diceValues.postValue(currentDice.toList())
                 }
-                deferredList.awaitAll()
             }
-
             _isRolling.value = false
             _buttonText.value = "ROLL"
         }
