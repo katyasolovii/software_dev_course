@@ -22,6 +22,8 @@ class DownloadViewModel : ViewModel() {
     val statusText: StateFlow<String> = _statusText.asStateFlow()
 
     fun startDownload() {
+        // Якщо завантаження вже активне, то повторний запуск заборонено
+        if (downloadJob?.isActive == true) return
         downloadJob = viewModelScope.launch {
             fileRepository.downloadFile()
                 // onCompletion - перевірка успіху або скасування
