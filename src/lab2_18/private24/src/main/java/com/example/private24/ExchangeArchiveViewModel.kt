@@ -78,7 +78,7 @@ class ExchangeArchiveViewModel(application: Application) : AndroidViewModel(appl
 
         workManager.enqueueUniqueWork(
             "exchange_rates_$date",
-            ExistingWorkPolicy.REPLACE,
+            ExistingWorkPolicy.KEEP,
             oneTimeRequest
         )
     }
