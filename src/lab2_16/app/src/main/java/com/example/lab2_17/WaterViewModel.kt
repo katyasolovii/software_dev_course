@@ -2,12 +2,14 @@ package com.example.lab2_17
 
 import android.app.Application
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.lifecycle.AndroidViewModel
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.TimeUnit
 
 class WaterViewModel(application: Application) : AndroidViewModel(application) {
@@ -19,13 +21,23 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
     private val workManager = WorkManager.getInstance(application)
 
     private val _isEnabled = MutableStateFlow(prefs.getBoolean(KEY_ENABLED, false))
-    val isEnabled: StateFlow<Boolean> = _isEnabled
+    val isEnabled: StateFlow<Boolean> = _isEnabled.asStateFlow()
 
     private val _count = MutableStateFlow(prefs.getInt(WaterReminderWorker.KEY_COUNT, 0))
-    val count: StateFlow<Int> = _count
+    val count: StateFlow<Int> = _count.asStateFlow()
+
+    // Автоматично підхоплюємо нове значення лічильника після роботи Worker
+    private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
+        if (key == WaterReminderWorker.KEY_COUNT) {
+            _count.value = sharedPrefs.getInt(WaterReminderWorker.KEY_COUNT, 0)
+        }
+    }
+
+    init {
+        prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+    }
 
     fun startReminder(intervalMinutes: Long) {
-        // Мінімальний системний інтервал для PeriodicWorkRequest — 15 хвилин
         val safeInterval = if (intervalMinutes < 15) 15L else intervalMinutes
 
         val request = PeriodicWorkRequestBuilder<WaterReminderWorker>(
@@ -48,8 +60,9 @@ class WaterViewModel(application: Application) : AndroidViewModel(application) {
         _isEnabled.value = false
     }
 
-    fun refreshCount() {
-        _count.value = prefs.getInt(WaterReminderWorker.KEY_COUNT, 0)
+    override fun onCleared() {
+        super.onCleared()
+        prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
     }
 
     companion object {
