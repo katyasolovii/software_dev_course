@@ -26,7 +26,7 @@ class TimerForegroundService : Service() {
     private val scope = CoroutineScope(Dispatchers.Default + serviceJob)
     private var isRunning = false
 
-    // StateFlow для реактивної передачі секунд у UI
+    // StateFlow для передачі секунд у UI
     private val _secondsFlow = MutableStateFlow(0)
     val secondsFlow: StateFlow<Int> = _secondsFlow.asStateFlow()
 
