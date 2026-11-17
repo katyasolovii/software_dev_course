@@ -35,24 +35,30 @@ class ExchangeRatesSyncWorker(
             if (body == null) {
                 return Result.failure(workDataOf("error" to "Сервер повернув відповідь без даних."))
             }
+            
+            // Перевіряємо, чи відповідає дата у відповіді запитаній даті
+            if (body.date.isNotBlank() && body.date != dateToFetch) {
+                return Result.failure(
+                    workDataOf("error" to "Сервер повернув курси за іншу дату (${body.date}).")
+                )
+            }
 
             val rawRates = body.exchangeRate
             if (rawRates.isNullOrEmpty()) {
                 return Result.failure(workDataOf("error" to "Сервер не повернув курсів"))
             }
 
-            val responseDate = if (body.date.isNotBlank()) body.date else dateToFetch
-
-            val entities = rawRates.mapNotNull { item ->
-                val currencyCode = item.currency ?: return@mapNotNull null
-                ExchangeRateEntity(
-                    date = responseDate,
-                    currency = currencyCode,
-                    baseCurrency = item.baseCurrency ?: "UAH",
-                    purchaseRate = item.purchaseRate,
-                    saleRate = item.saleRate
-                )
-            }
+            val entities = rawRates
+                .filter { !it.currency.isNullOrBlank() }
+                .map { item ->
+                    ExchangeRateEntity(
+                        date = dateToFetch,
+                        currency = item.currency!!,
+                        baseCurrency = item.baseCurrency ?: "UAH",
+                        purchaseRate = item.purchaseRate,
+                        saleRate = item.saleRate
+                    )
+                }
 
             if (entities.isEmpty()) {
                 return Result.failure(workDataOf("error" to "Сервер не повернув курсів"))
