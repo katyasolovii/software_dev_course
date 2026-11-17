@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -14,28 +15,37 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class TimerForegroundService : Service() {
 
-    // CoroutineScope з диспатчером Dispatchers.Default
     private val serviceJob = Job()
     private val scope = CoroutineScope(Dispatchers.Default + serviceJob)
-    private var seconds = 0
     private var isRunning = false
 
-    // null у onBind
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
+    // StateFlow для реактивної передачі секунд у UI
+    private val _secondsFlow = MutableStateFlow(0)
+    val secondsFlow: StateFlow<Int> = _secondsFlow.asStateFlow()
+
+    // Binder, який повертає посилання на цей сервіс
+    inner class LocalBinder : Binder() {
+        fun getService(): TimerForegroundService = this@TimerForegroundService
     }
 
-    // Перевизначання onCreate(), де створюємо NotificationChannel
+    private val binder = LocalBinder()
+
+    override fun onBind(intent: Intent?): IBinder {
+        return binder
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
     }
 
-    // Сповіщення та виклик startForeground()
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = createNotification()
         startForeground(1, notification)
@@ -48,13 +58,12 @@ class TimerForegroundService : Service() {
         return START_NOT_STICKY
     }
 
-    // Безкінечний цикл із delay(1000) та логуванням у CoroutineScope
     private fun startTimer() {
         scope.launch {
             while (isRunning) {
                 delay(1000)
-                seconds++
-                Log.d("Timer", "Минуло $seconds секунд")
+                _secondsFlow.value += 1
+                Log.d("Timer", "Минуло ${_secondsFlow.value} секунд")
             }
         }
     }
@@ -80,10 +89,10 @@ class TimerForegroundService : Service() {
             .build()
     }
 
-    // У onDestroy() скасовуємо CoroutineScope
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        _secondsFlow.value = 0
         scope.cancel()
         Log.d("Timer", "Службу зупинено, корутину скасовано")
     }
